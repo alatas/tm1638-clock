@@ -2,111 +2,117 @@
 
 TM1638 tm (8, 9, 7);
 
+unsigned long waitcheckTime=0;
+unsigned long waitcheckButtons=0;
 
-unsigned long elap;
-unsigned long time;
-unsigned long gap;
-boolean dots;
-byte buttons;
+unsigned long totalSecond=0;
+unsigned long gapSecond=0;
+boolean dots=0;
+
 
 void setup(){
-  gap=0;
-  dots=0;
-  buttons=0;
+
 }
 
 void loop(){
   checkButtons();
   checkTime();
-  delay (100);
 }
 
 
 void checkTime(){
-  elap=floor(millis() / 1000);
-  if (elap + gap != time) {
-    time=gap + elap;
-    tm.setDisplayToString(formatDate(time),(dots * 80));
+  if (millis() >= waitcheckTime) {
     dots = !dots;
+    drawToModule();
+    waitcheckTime += 1000;
   }
 }
 
-
 void checkButtons(){
-  buttons=tm.getButtons();
-  if(buttons>0){
-    for (byte i=0;i<8;i++){
-      if ((buttons & 1<<i) != 0) buttonEvent(i);
-    }
-    delay(100);
+  if (millis() >= waitcheckButtons) {
     tm.setLEDs(0);
+    byte buttons=tm.getButtons();
+    if(buttons>0){
+      for (byte i=0;i<6;i++){
+        if ((buttons & 1<<i) != 0) {
+          buttonEvent(i);
+          waitcheckButtons +=100;
+          drawToModule();
+        }
+      }
+    }
+    waitcheckButtons +=100;
   }
+}
+
+void drawToModule(){
+  unsigned long elapSecond = floor(millis() / 1000);
+  totalSecond = gapSecond + elapSecond;
+  tm.setDisplayToString(formatTime(totalSecond),(dots * 80));
+
 }
 
 
 void buttonEvent(byte inp){
-  tm.setLED(1,inp);
+  tm.setLED((inp % 2 ) + 1,inp);
   switch (inp) {
   case 0:
-    if (hour(gap) != 23)    {  
-      gap += 3600    ; 
+    if (hour(gapSecond) != 23)    {  
+      gapSecond += 3600    ; 
     }
     else      {
-      gap -= 82800;
+      gapSecond -= 82800;
     }
     break;
   case 1:
-    if (hour(gap) != 0){
-      gap -= 3600;
+    if (hour(gapSecond) != 0){
+      gapSecond -= 3600;
     }
     else{
-      gap += 82800;
+      gapSecond += 82800;
     }
     break;
   case 2:
-    if (minute(gap) != 59){
-      gap += 60;
+    if (minute(gapSecond) != 59){
+      gapSecond += 60;
     }
     else{
-      gap -= 3540;
+      gapSecond -= 3540;
     }
     break;
   case 3:
-    if (minute(gap) != 0){
-      gap -= 60;
+    if (minute(gapSecond) != 0){
+      gapSecond -= 60;
     }
     else{
-      gap += 3540;
+      gapSecond += 3540;
     }
     break;
   case 4:
-    if (second(gap) != 59){
-      gap += 1;
+    if (second(gapSecond) != 59){
+      gapSecond += 1;
     }
     else{
-      gap -= 59;
+      gapSecond -= 59;
     }
     break; 
-
   case 5:
-    if (second(gap) != 0){
-      gap -= 1;
+    if (second(gapSecond) != 0){
+      gapSecond -= 1;
     }
     else{
-      gap += 59;
+      gapSecond += 59;
     }
     break;
   case 6:
-    delay(400);
     break;
   case 7:
-    gap=0;
     break;
   }
 }
 
 
-String formatDate(unsigned long inp){
+String formatTime(unsigned long inp){
   return hourStr(inp) + minuteStr(inp) + secondStr(inp);
 }
 
@@ -142,3 +148,5 @@ byte minute(unsigned long inp){
 byte second(unsigned long inp){
   return  byte(inp % 60);
 }
+
+
