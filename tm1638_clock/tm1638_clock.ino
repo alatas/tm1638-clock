@@ -5,26 +5,29 @@ TM1638 tm (8, 9, 7);
 unsigned long waitcheckTime=0;
 unsigned long waitcheckButtons=0;
 
-unsigned long totalSecond=0;
+unsigned long intervalcheckTime=1000;
+unsigned long intervalcheckButtons=100;
+
 unsigned long gapSecond=0;
 boolean dots=0;
 
+boolean moduleOff=0;
 
 void setup(){
-
+  waitcheckTime = intervalcheckTime;
+  waitcheckButtons = intervalcheckButtons;
 }
 
 void loop(){
-  checkButtons();
   checkTime();
+  checkButtons();
 }
-
 
 void checkTime(){
   if (millis() >= waitcheckTime) {
     dots = !dots;
     drawToModule();
-    waitcheckTime += 1000;
+    waitcheckTime += intervalcheckTime;
   }
 }
 
@@ -36,20 +39,24 @@ void checkButtons(){
       for (byte i=0;i<6;i++){
         if ((buttons & 1<<i) != 0) {
           buttonEvent(i);
-          waitcheckButtons +=100;
+          waitcheckButtons +=intervalcheckButtons;
           drawToModule();
         }
       }
     }
-    waitcheckButtons +=100;
+    waitcheckButtons +=intervalcheckButtons;
   }
 }
 
 void drawToModule(){
-  unsigned long elapSecond = floor(millis() / 1000);
-  totalSecond = gapSecond + elapSecond;
-  tm.setDisplayToString(formatTime(totalSecond),(dots * 80));
-
+  if (!moduleOff){
+    unsigned long elapSecond = round(millis() / 1000);
+    unsigned long totalSecond = gapSecond + elapSecond;
+    byte pos = totalSecond % 4;
+    if (pos>2) pos=1;
+    tm.clearDisplay();
+    tm.setDisplayToString(formatTime(totalSecond),(dots * 80),pos);
+  }
 }
 
 
@@ -89,20 +96,11 @@ void buttonEvent(byte inp){
     }
     break;
   case 4:
-    if (second(gapSecond) != 59){
-      gapSecond += 1;
-    }
-    else{
-      gapSecond -= 59;
-    }
-    break; 
+    gapSecond -= second(gapSecond + round(millis() / 1000)); 
+    break;
   case 5:
-    if (second(gapSecond) != 0){
-      gapSecond -= 1;
-    }
-    else{
-      gapSecond += 59;
-    }
+    moduleOff = !moduleOff;
+    if (moduleOff) tm.clearDisplay();
     break;
   case 6:
     break;
@@ -148,5 +146,12 @@ byte minute(unsigned long inp){
 byte second(unsigned long inp){
   return  byte(inp % 60);
 }
+
+
+
+
+
+
+
 
 
